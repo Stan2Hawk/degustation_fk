@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Электронная дегустация</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#F6F7F3;
+    --card:#FFFFFF;
+    --ink:#17231C;
+    --muted:#5E6B62;
+    --line:#E1E5DD;
+    --green:#1E5B3C;
+    --green-soft:#E4EFE7;
+    --amber:#D98E04;
+    --red:#C23B2E;
+    --radius:16px;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Golos Text',system-ui,-apple-system,sans-serif;
+    line-height:1.5;
+    min-height:100vh;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:16px 16px 64px}
+  h1,h2{font-family:'Unbounded',sans-serif;letter-spacing:-.01em}
+  h1{font-size:1.35rem;font-weight:700}
+  h2{font-size:1rem;font-weight:500;margin-bottom:12px}
+
+  header{display:flex;align-items:center;gap:12px;padding:14px 0 18px}
+  .logo{
+    width:42px;height:42px;border-radius:12px;flex:none;
+    background:var(--green);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:22px;
+  }
+  header .sub{font-size:.8rem;color:var(--muted)}
+
+  .tabs{display:flex;background:#EBEEE7;border-radius:999px;padding:4px;margin-bottom:20px}
+  .tabs button{
+    flex:1;border:none;background:transparent;border-radius:999px;
+    padding:10px 8px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer;
+  }
+  .tabs button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(23,35,28,.10)}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px;margin-bottom:16px;
+  }
+  label{display:block;font-size:.85rem;font-weight:600;margin-bottom:6px}
+  input[type=text],input[type=number],textarea,select{
+    width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;
+    font:inherit;background:#FCFDFB;
+  }
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+  .row{display:flex;gap:12px}
+  .row>*{flex:1}
+  .field{margin-bottom:14px}
+  .hint{font-size:.78rem;color:var(--muted);margin-top:4px}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    border:none;border-radius:12px;padding:13px 20px;font:inherit;font-weight:600;
+    cursor:pointer;background:var(--green);color:#fff;width:100%;
+  }
+  .btn:hover{background:#174A31}
+  .btn.secondary{background:var(--green-soft);color:var(--green)}
+  .btn.ghost{background:transparent;color:var(--muted);border:1.5px solid var(--line)}
+  .btn.danger{background:transparent;color:var(--red);border:1.5px solid #EBD2CF}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .spin{
+    width:16px;height:16px;border:2px solid rgba(255,255,255,.4);
+    border-top-color:#fff;border-radius:50%;display:inline-block;
+    animation:rot .7s linear infinite;
+  }
+  @keyframes rot{to{transform:rotate(360deg)}}
+  .btnrow{display:flex;gap:10px}
+  .btnrow .btn{width:auto;flex:1}
+
+  /* активная дегустация */
+  .active-tasting{
+    display:flex;align-items:flex-start;gap:10px;
+    background:var(--green-soft);border-radius:12px;padding:12px 14px;margin-bottom:14px;
+  }
+  .active-tasting .dot{width:10px;height:10px;border-radius:50%;background:var(--green);margin-top:6px;flex:none}
+  .active-tasting b{display:block}
+  .active-tasting .meta{font-size:.78rem;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+
+  #qrbox{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0}
+  #qrcode{background:#fff;padding:14px;border-radius:14px;border:1px solid var(--line)}
+  #qrcode img,#qrcode canvas{display:block}
+  .qr-caption{font-family:'Unbounded',sans-serif;font-size:.9rem;text-align:center}
+
+  .crit{margin-bottom:18px}
+  .crit .cname{font-weight:600;margin-bottom:8px}
+  .scale{display:flex;gap:8px}
+  .scale button{
+    flex:1;aspect-ratio:1/1;max-height:60px;border-radius:14px;
+    border:1.5px solid var(--line);background:#FCFDFB;
+    font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;
+    color:var(--muted);cursor:pointer;transition:transform .06s;
+  }
+  .scale button:active{transform:scale(.94)}
+  .scale button.sel{color:#fff;border-color:transparent}
+  .scale button.sel[data-v="1"]{background:#C23B2E}
+  .scale button.sel[data-v="2"]{background:#D96C2A}
+  .scale button.sel[data-v="3"]{background:#D98E04}
+  .scale button.sel[data-v="4"]{background:#5E8C3A}
+  .scale button.sel[data-v="5"]{background:#1E5B3C}
+  .scale-labels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:4px}
+
+  .steps{display:flex;gap:6px;margin-bottom:16px}
+  .steps span{flex:1;height:6px;border-radius:3px;background:var(--line)}
+  .steps span.done{background:var(--green)}
+  .steps span.cur{background:var(--amber)}
+  .sampletag{
+    display:inline-block;background:var(--green-soft);color:var(--green);
+    font-family:'IBM Plex Mono',monospace;font-size:.8rem;font-weight:500;
+    padding:4px 12px;border-radius:999px;margin-bottom:10px;
+  }
+
+  .commentbox{border-top:1px dashed var(--line);padding-top:14px;margin-top:4px}
+  .commentbox.required label::after{content:' — обязательно';color:var(--red);font-weight:700}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;font-size:.82rem;min-width:640px}
+  th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#F1F4EE;font-weight:600;white-space:nowrap;position:sticky;top:0}
+  td.num{font-family:'IBM Plex Mono',monospace}
+  tr:last-child td{border-bottom:none}
+  .avgline{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .avgchip{background:var(--green-soft);border-radius:10px;padding:8px 12px;font-size:.8rem}
+  .avgchip b{font-family:'IBM Plex Mono',monospace;font-size:1rem;display:block}
+
+  .empty{color:var(--muted);font-size:.9rem;text-align:center;padding:24px 0}
+  .ok{text-align:center;padding:36px 12px}
+  .ok .big{font-size:56px;margin-bottom:10px}
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;
+    font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;
+    max-width:90vw;text-align:center;
+  }
+  .toast.show{opacity:1}
+  .hidden{display:none !important}
+
+  /* ---------- печатный лист А4 ---------- */
+  #printSheet{display:none}
+  @media print{
+    @page{size:A4;margin:12mm}
+    body{background:#fff}
+    body>.wrap{display:none}
+    #printSheet{
+      display:flex !important;flex-direction:column;align-items:center;
+      text-align:center;padding-top:6mm;
+    }
+    #printSheet .ps-kicker{font-size:11pt;color:#444;letter-spacing:.06em;text-transform:uppercase}
+    #printSheet .ps-product{font-family:'Unbounded',sans-serif;font-size:26pt;font-weight:700;margin:4mm 0 2mm;line-height:1.15}
+    #printSheet .ps-meta{font-size:11pt;color:#444;margin-bottom:6mm}
+    #printSheet .ps-qr{border:2px solid #17231C;border-radius:4mm;padding:5mm;background:#fff}
+    #printSheet .ps-qr img,#printSheet .ps-qr canvas{width:95mm !important;height:95mm !important;image-rendering:pixelated}
+    #printSheet .ps-steps{margin-top:7mm;font-size:13pt;line-height:1.7;text-align:left}
+    #printSheet .ps-steps b{font-size:15pt}
+    #printSheet .ps-foot{margin-top:6mm;font-size:9pt;color:#777}
+  }
+  @media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">🥄</div>
+    <div>
+      <h1>Электронная дегустация</h1>
+      <div class="sub">оценка продукции без бумажных бланков</div>
+    </div>
+  </header>
+
+  <div class="tabs" id="roleTabs">
+    <button id="tabAdmin" class="active" onclick="setRole('admin')">Организатор</button>
+    <button id="tabTaster" onclick="setRole('taster')">Дегустатор</button>
+  </div>
+
+  <!-- ================= ОРГАНИЗАТОР ================= -->
+  <div id="viewAdmin">
+
+    <div class="card" id="createCard">
+      <h2 id="createTitle">1 · Новая дегустация</h2>
+      <div id="editNote" class="active-tasting hidden" style="margin-bottom:14px">
+        <div class="dot" style="background:var(--amber)"></div>
+        <div><b>Режим редактирования</b>
+        <span class="meta" id="editNoteMeta"></span></div>
+      </div>
+      <div class="field">
+        <label for="cfgProduct">Дегустируемый продукт</label>
+        <input type="text" id="cfgProduct" placeholder="Например: Котлета куриная, новая рецептура">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="cfgSamples">Количество образцов</label>
+          <input type="number" id="cfgSamples" min="1" max="20" value="3" oninput="renderNameInputs()">
+        </div>
+        <div class="field">
+          <label for="cfgThreshold">Комментарий обязателен при оценке ≤</label>
+          <select id="cfgThreshold">
+            <option value="0">не требовать</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+      </div>
+      <div id="sampleNames"></div>
+      <p class="hint" style="margin-bottom:12px">Критерии: внешний вид · запах · вкус · консистенция (шкала 1–5). Каждая дегустация получает свой номер и свой QR-код.</p>
+      <div class="btnrow">
+        <button class="btn" id="btnSave" onclick="saveTasting()">＋ Создать дегустацию</button>
+        <button class="btn ghost hidden" id="btnCancelEdit" onclick="cancelEdit()">Отменить</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2 · Выбор дегустации</h2>
+      <div class="field">
+        <label for="tastingSelect">Дегустация</label>
+        <select id="tastingSelect" onchange="selectTasting(this.value)"></select>
+        <p class="hint">QR-код и таблица результатов ниже относятся к выбранной дегустации.</p>
+      </div>
+      <div id="activeInfo"></div>
+      <div class="field">
+        <label for="cfgEndpoint">Куда отправлять результаты — webhook (для GitHub Pages)</label>
+        <input type="text" id="cfgEndpoint" placeholder="https://script.google.com/macros/s/.../exec" onchange="saveEndpoint()">
+        <p class="hint" id="endpointHint"></p>
+      </div>
+      <div id="qrbox">
+        <div class="qr-caption" id="qrCaption"></div>
+        <div id="qrcode"></div>
+        <p class="hint" id="qrDensity" style="text-align:center"></p>
+        <button class="btn secondary" onclick="window.print()">🖨 Распечатать лист с QR-кодом</button>
+      </div>
+      <div class="btnrow" style="margin-top:10px">
+        <button class="btn secondary" onclick="editTasting()">✏️ Редактировать</button>
+        <button class="btn danger" onclick="deleteTasting()">Удалить</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3 · Результаты выбранной дегустации</h2>
+
+      <!-- режим webhook: результаты собираются во внешней таблице -->
+      <div id="webhookNote" class="hidden">
+        <div class="active-tasting" style="margin-bottom:14px">
+          <div class="dot"></div>
+          <div><b>Результаты собираются через webhook</b>
+          <span class="meta">оценки с телефонов попадают напрямую в вашу Google-таблицу</span></div>
+        </div>
+        <div class="field">
+          <label for="cfgSheetUrl">Ссылка на таблицу результатов (для кнопки ниже)</label>
+          <input type="text" id="cfgSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." onchange="saveSheetUrl()">
+        </div>
+        <button class="btn" onclick="openSheet()">Открыть таблицу результатов ↗</button>
+        <p class="hint" style="margin-top:8px">Скачать Excel: в таблице «Файл → Скачать → .xlsx». Чтобы вернуть сбор результатов на этой странице — очистите поле webhook выше.</p>
+      </div>
+
+      <!-- локальный режим: хранилище на этой странице -->
+      <div id="resultsLocal">
+        <div id="results"></div>
+        <div class="btnrow" style="margin-top:14px">
+          <button class="btn" onclick="downloadCSV(false)">⬇ CSV: эта дегустация</button>
+          <button class="btn secondary" onclick="downloadCSV(true)">⬇ CSV: все дегустации</button>
+        </div>
+        <p class="hint" style="margin-top:8px">CSV открывается в Excel. В выгрузке каждая строка содержит номер дегустации и её продукт. Таблица обновляется автоматически.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ДЕГУСТАТОР ================= -->
+  <div id="viewTaster" class="hidden">
+
+    <div class="card" id="stepName">
+      <h2 id="tProduct">Дегустация</h2>
+      <p class="hint" id="tMeta" style="margin:-6px 0 14px"></p>
+      <div class="field" id="tasterPickWrap">
+        <label for="tasterPick">Выберите дегустацию</label>
+        <select id="tasterPick" onchange="pickTasterTasting(this.value)"></select>
+      </div>
+      <div class="field">
+        <label for="tName">Ваши фамилия, имя, отчество</label>
+        <input type="text" id="tName" placeholder="Иванов Иван Иванович" autocomplete="name">
+      </div>
+      <button class="btn" onclick="startTasting()">Начать дегустацию →</button>
+    </div>
+
+    <div class="card hidden" id="stepSample">
+      <div class="steps" id="stepsBar"></div>
+      <span class="sampletag" id="sampleTag">Образец 1</span>
+      <div id="critList"></div>
+      <div class="commentbox" id="commentBox">
+        <div class="field">
+          <label for="tComment">Комментарий</label>
+          <textarea id="tComment" rows="2" placeholder="Что понравилось или смутило?"></textarea>
+          <p class="hint" id="commentHint"></p>
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="btn ghost" id="btnBack" onclick="prevSample()">← Назад</button>
+        <button class="btn" id="btnNext" onclick="nextSample()">Далее →</button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="stepDone">
+      <div class="ok">
+        <div class="big">✅</div>
+        <h2>Спасибо! Оценки отправлены</h2>
+        <p class="hint" id="doneHint" style="margin-top:6px">Результаты уже доступны организатору дегустации.</p>
+        <button class="btn secondary" style="margin-top:18px" onclick="resetTaster()">Оценить ещё раз (другой дегустатор)</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- печатный лист А4: виден только при печати -->
+<div id="printSheet">
+  <div class="ps-kicker">Дегустация продукции</div>
+  <div class="ps-product" id="psProduct"></div>
+  <div class="ps-meta" id="psMeta"></div>
+  <div class="ps-qr"><div id="qrcodePrint"></div></div>
+  <div class="ps-steps">
+    <b>1.</b> Наведите камеру телефона на код<br>
+    <b>2.</b> Откройте появившуюся ссылку<br>
+    <b>3.</b> Укажите ФИО и оцените образцы
+  </div>
+  <div class="ps-foot" id="psFoot"></div>
+</div>
+
+<script>
+/* ==========================================================================
+   НАСТРОЙКА ОДИН РАЗ, ПЕРЕД ЗАЛИВКОЙ ФАЙЛА НА САЙТ:
+   впишите между кавычками адрес вашего webhook (Apps Script).
+   Тогда адрес не нужно вшивать в QR-код — код станет заметно
+   крупноблочнее и будет уверенно читаться с печатного листа.
+   Пример: const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfy.../exec';
+   ========================================================================== */
+const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrugE0lJlkmzwqZRsRuwPVBJHs5Wquc6le2WXJT7drbrRE5Pon1bI4Pu5iQaOAXbJFzw/exec';
+
+const CRITERIA = ['Внешний вид','Запах','Вкус','Консистенция'];
+const T_KEY = 'degustation-v2-tastings';   // список дегустаций
+const R_KEY = 'degustation-v2-results';    // все результаты (с tastingId и продуктом)
+
+let tastings = [];        // [{id, product, samples, threshold, created}]
+let allResults = [];      // [{tastingId, product, name, time, sample, scores, comment}]
+let selectedId = null;    // выбранная дегустация (организатор)
+let tasterTasting = null; // дегустация, которую проходит дегустатор
+let viaQR = false;        // дегустатор пришёл по QR-коду — дегустация зафиксирована
+let hasStorage = typeof window.storage !== 'undefined';
+let endpoint = '';        // webhook для отправки результатов (GitHub Pages и т.п.)
+
+/* ---------- утилиты ---------- */
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+async function loadKey(key, fallback){
+  if(hasStorage){
+    try{
+      const r = await window.storage.get(key, true);
+      return r ? JSON.parse(r.value) : fallback;
+    }catch(e){ return fallback; }
+  }
+  try{
+    const v = localStorage.getItem(key);
+    return v ? JSON.parse(v) : fallback;
+  }catch(e){ return fallback; }
+}
+async function saveKey(key, val){
+  if(hasStorage){
+    try{ await window.storage.set(key, JSON.stringify(val), true); return; }
+    catch(e){ console.error('storage error', e); toast('Ошибка сохранения — попробуйте ещё раз'); return; }
+  }
+  try{ localStorage.setItem(key, JSON.stringify(val)); }
+  catch(e){ console.error('localStorage error', e); }
+}
+function esc(s){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function fmtDate(ts){
+  return new Date(ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function byId(id){ return tastings.find(t=>t.id===id) || null; }
+
+/* конфигурация дегустации, зашитая в ссылку QR (base64url) */
+function encCfg(t){
+  const o={i:t.id, p:t.product, s:t.samples, h:t.threshold};
+  if(t.sampleNames && t.sampleNames.some(x=>x)) o.n=t.sampleNames;
+  // адрес вшиваем в код ТОЛЬКО если он не задан константой в файле:
+  // так QR остаётся коротким и крупноблочным
+  if(endpoint && endpoint!==DEFAULT_ENDPOINT) o.e=endpoint;
+  return btoa(unescape(encodeURIComponent(JSON.stringify(o))))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decCfg(str){
+  try{
+    let b=str.replace(/-/g,'+').replace(/_/g,'/');
+    while(b.length%4) b+='=';
+    const o=JSON.parse(decodeURIComponent(escape(atob(b))));
+    if(!o.i || !o.p) return null;
+    return { id:o.i, product:o.p, samples:o.s||1, threshold:o.h||0,
+             sampleNames:o.n||[], endpoint:o.e||DEFAULT_ENDPOINT };
+  }catch(e){ return null; }
+}
+/* имя образца (i с нуля): пользовательское или пустая строка */
+function sName(t,i){ return (t.sampleNames && t.sampleNames[i]) ? t.sampleNames[i] : ''; }
+/* подпись образца для таблиц: «2 · Рецептура Б» или просто номер */
+function sLabel(num, name){ return name ? num+' · '+name : String(num); }
+/* средний балл по 4 критериям */
+function avgOf(scores){
+  return CRITERIA.reduce((s,c)=>s+(scores[c]||0),0)/CRITERIA.length;
+}
+function saveEndpoint(){
+  endpoint=document.getElementById('cfgEndpoint').value.trim();
+  try{ localStorage.setItem('degustation-endpoint', endpoint); }catch(e){}
+  const t=byId(selectedId);
+  if(t) makeQR(t);
+  updateResultsMode();
+  toast(endpoint ? 'Webhook сохранён, QR-код обновлён' : 'Webhook очищен');
+}
+function renderEndpointHint(){
+  const el=document.getElementById('endpointHint');
+  if(!el) return;
+  if(DEFAULT_ENDPOINT){
+    el.textContent='Адрес уже вшит в код страницы (константа DEFAULT_ENDPOINT) — в QR он не попадает, поэтому код крупный. Поле ниже нужно только чтобы отправлять результаты на другой адрес.';
+  }else{
+    el.textContent='Адрес будет вшит в каждый QR-код и сделает его плотнее. Рекомендуется вместо этого один раз вписать адрес в константу DEFAULT_ENDPOINT в начале кода страницы — тогда QR останется крупноблочным.';
+  }
+}
+function saveSheetUrl(){
+  const u=document.getElementById('cfgSheetUrl').value.trim();
+  try{ localStorage.setItem('degustation-sheet-url', u); }catch(e){}
+  if(u) toast('Ссылка на таблицу сохранена');
+}
+function openSheet(){
+  const u=document.getElementById('cfgSheetUrl').value.trim();
+  if(!u){ toast('Сначала вставьте ссылку на таблицу'); return; }
+  window.open(u, '_blank');
+}
+/* какой блок результатов показывать: webhook-таблица или локальное хранилище */
+function updateResultsMode(){
+  const webhookMode = !!endpoint && !hasStorage;
+  document.getElementById('webhookNote').classList.toggle('hidden', !webhookMode);
+  document.getElementById('resultsLocal').classList.toggle('hidden', webhookMode);
+}
+
+/* ---------- роли ---------- */
+function setRole(r){
+  document.getElementById('tabAdmin').classList.toggle('active', r==='admin');
+  document.getElementById('tabTaster').classList.toggle('active', r==='taster');
+  document.getElementById('viewAdmin').classList.toggle('hidden', r!=='admin');
+  document.getElementById('viewTaster').classList.toggle('hidden', r!=='taster');
+  if(r==='taster'){
+    const surveyInProgress = !document.getElementById('stepSample').classList.contains('hidden');
+    if(!viaQR && !surveyInProgress){
+      tasterTasting = byId(selectedId) || tastings[tastings.length-1] || null;
+    }
+    refreshTasterHeader();
+  }
+  if(r==='admin') renderAdmin();
+}
+
+/* ---------- организатор: создание ---------- */
+function renderNameInputs(){
+  const n = Math.max(1, Math.min(20, parseInt(document.getElementById('cfgSamples').value)||1));
+  const box = document.getElementById('sampleNames');
+  const old = [...box.querySelectorAll('input')].map(i=>i.value);
+  box.innerHTML='';
+  for(let i=0;i<n;i++){
+    const d=document.createElement('div'); d.className='field';
+    const lab=document.createElement('label');
+    lab.textContent='Название образца '+(i+1);
+    const inp=document.createElement('input');
+    inp.type='text';
+    inp.placeholder='Например: Рецептура А, SKU 1024 (можно оставить пустым)';
+    inp.value=old[i]||'';
+    d.appendChild(lab); d.appendChild(inp);
+    box.appendChild(d);
+  }
+}
+
+let editingId = null; // редактируемая дегустация (null — создаём новую)
+
+async function saveTasting(){
+  const product = document.getElementById('cfgProduct').value.trim();
+  const samples = Math.max(1, Math.min(20, parseInt(document.getElementById('cfgSamples').value)||1));
+  const threshold = parseInt(document.getElementById('cfgThreshold').value);
+  if(!product){ toast('Укажите название продукта'); return; }
+  const sampleNames = [...document.getElementById('sampleNames').querySelectorAll('input')]
+    .map(i=>i.value.trim()).slice(0, samples);
+
+  tastings = await loadKey(T_KEY, tastings);
+
+  if(editingId){                       // ---- сохранение изменений ----
+    const t = tastings.find(x=>x.id===editingId);
+    if(!t){ toast('Дегустация не найдена'); cancelEdit(); return; }
+    t.product=product; t.samples=samples; t.threshold=threshold; t.sampleNames=sampleNames;
+    t.edited=Date.now();
+    await saveKey(T_KEY, tastings);
+    selectedId = t.id;
+    const wasEditing = t.id;
+    cancelEdit();
+    selectedId = wasEditing;
+    renderAdmin();
+    toast('Изменения сохранены — перепечатайте QR-код');
+    document.getElementById('qrbox').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+
+  const id = 'T' + Date.now().toString(36).toUpperCase();   // ---- создание ----
+  tastings.push({ id, product, samples, threshold, sampleNames, created: Date.now() });
+  await saveKey(T_KEY, tastings);
+
+  selectedId = id;
+  document.getElementById('cfgProduct').value='';
+  document.getElementById('sampleNames').querySelectorAll('input').forEach(i=>i.value='');
+  renderAdmin();
+  toast('Дегустация создана: ' + product);
+}
+
+/* заполнить форму данными выбранной дегустации */
+function editTasting(){
+  const t=byId(selectedId);
+  if(!t){ toast('Сначала выберите дегустацию'); return; }
+  editingId = t.id;
+  document.getElementById('cfgProduct').value = t.product;
+  document.getElementById('cfgSamples').value = t.samples;
+  document.getElementById('cfgThreshold').value = t.threshold;
+  renderNameInputs();
+  const inputs=[...document.getElementById('sampleNames').querySelectorAll('input')];
+  inputs.forEach((inp,i)=>{ inp.value = (t.sampleNames && t.sampleNames[i]) ? t.sampleNames[i] : ''; });
+
+  document.getElementById('createTitle').textContent='1 · Редактирование дегустации';
+  document.getElementById('btnSave').textContent='💾 Сохранить изменения';
+  document.getElementById('btnCancelEdit').classList.remove('hidden');
+  document.getElementById('editNote').classList.remove('hidden');
+  document.getElementById('editNoteMeta').textContent =
+    '№ '+t.id+' сохранится — но QR-код изменится, старые распечатки нужно заменить';
+  document.getElementById('createCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelEdit(){
+  editingId = null;
+  document.getElementById('createTitle').textContent='1 · Новая дегустация';
+  document.getElementById('btnSave').textContent='＋ Создать дегустацию';
+  document.getElementById('btnCancelEdit').classList.add('hidden');
+  document.getElementById('editNote').classList.add('hidden');
+  document.getElementById('cfgProduct').value='';
+  document.getElementById('sampleNames').querySelectorAll('input').forEach(i=>i.value='');
+}
+
+/* ---------- организатор: выбор / QR / удаление ---------- */
+function selectTasting(id){
+  selectedId = id;
+  renderAdmin();
+}
+
+function renderAdmin(){
+  updateResultsMode();
+  const sel=document.getElementById('tastingSelect');
+  sel.innerHTML='';
+  if(!tastings.length){
+    sel.innerHTML='<option>— дегустаций пока нет —</option>';
+    document.getElementById('activeInfo').innerHTML='';
+    document.getElementById('qrcode').innerHTML='';
+    document.getElementById('qrCaption').textContent='';
+    document.getElementById('results').innerHTML='<p class="empty">Создайте первую дегустацию в блоке выше.</p>';
+    return;
+  }
+  if(!byId(selectedId)) selectedId = tastings[tastings.length-1].id;
+
+  tastings.slice().reverse().forEach(t=>{
+    const o=document.createElement('option');
+    o.value=t.id;
+    o.textContent=t.product+' · '+fmtDate(t.created)+' · '+t.id;
+    if(t.id===selectedId)o.selected=true;
+    sel.appendChild(o);
+  });
+
+  const t=byId(selectedId);
+  document.getElementById('activeInfo').innerHTML=
+    '<div class="active-tasting"><div class="dot"></div><div><b>'+esc(t.product)+'</b>'+
+    '<span class="meta">№ '+t.id+' · образцов: '+t.samples+' · создана '+fmtDate(t.created)+'</span></div></div>';
+
+  makeQR(t);
+  renderResults();
+}
+
+function makeQR(t){
+  const box=document.getElementById('qrcode');
+  box.innerHTML='';
+  const url = location.href.split('#')[0] + '#d=' + encCfg(t);
+
+  // чем короче ссылка, тем крупнее модули: при запасе поднимаем уровень
+  // коррекции, при длинной ссылке — опускаем, чтобы не дробить код
+  const len = url.length;
+  const lvl = len<110 ? QRCode.CorrectLevel.H
+            : len<180 ? QRCode.CorrectLevel.Q
+            : len<300 ? QRCode.CorrectLevel.M
+            : QRCode.CorrectLevel.L;
+
+  new QRCode(box, { text:url, width:260, height:260,
+    colorDark:'#17231C', colorLight:'#FFFFFF', correctLevel: lvl });
+
+  // отдельный крупный код для печати (600px → чёткая печать на 95 мм)
+  const pbox=document.getElementById('qrcodePrint');
+  pbox.innerHTML='';
+  new QRCode(pbox, { text:url, width:600, height:600,
+    colorDark:'#000000', colorLight:'#FFFFFF', correctLevel: lvl });
+
+  document.getElementById('qrCaption').textContent = t.product + ' · № ' + t.id;
+
+  // печатный бланк
+  const names=(t.sampleNames||[]).filter(x=>x);
+  document.getElementById('psProduct').textContent = t.product;
+  document.getElementById('psMeta').textContent =
+    'Образцов: '+t.samples + (names.length? ' — '+names.join(' · ') : '') + '   |   № '+t.id;
+  document.getElementById('psFoot').textContent =
+    'Дата печати: '+fmtDate(Date.now())+'   ·   код действителен для этой дегустации';
+
+  // подсказка о плотности кода
+  const warn=document.getElementById('qrDensity');
+  if(warn){
+    if(len>300){
+      warn.className='hint';
+      warn.style.color='#C23B2E';
+      warn.textContent='Ссылка длинная ('+len+' симв.) — код получился плотным и хуже читается. Сократите названия образцов или впишите webhook в константу DEFAULT_ENDPOINT в коде страницы.';
+    }else{
+      warn.className='hint';
+      warn.style.color='';
+      warn.textContent='Длина ссылки: '+len+' симв. — код читается уверенно.';
+    }
+  }
+}
+
+async function deleteTasting(){
+  const t=byId(selectedId);
+  if(!t) return;
+  if(!confirm('Удалить дегустацию «'+t.product+'» (№ '+t.id+') и все её результаты?')) return;
+  tastings = tastings.filter(x=>x.id!==t.id);
+  allResults = allResults.filter(r=>r.tastingId!==t.id);
+  await saveKey(T_KEY, tastings);
+  await saveKey(R_KEY, allResults);
+  selectedId = tastings.length ? tastings[tastings.length-1].id : null;
+  renderAdmin();
+  toast('Дегустация удалена');
+}
+
+/* ---------- организатор: результаты ---------- */
+function renderResults(){
+  const box=document.getElementById('results');
+  const t=byId(selectedId);
+  if(!t){ box.innerHTML='<p class="empty">Дегустация не выбрана.</p>'; return; }
+  const rows = allResults.filter(r=>r.tastingId===t.id);
+  if(!rows.length){
+    box.innerHTML='<p class="empty">По дегустации «'+esc(t.product)+'» оценок пока нет.</p>';
+    return;
+  }
+  const avg={}; CRITERIA.forEach(c=>avg[c]=0);
+  rows.forEach(r=>CRITERIA.forEach(c=>avg[c]+=r.scores[c]));
+  let chips='<div class="avgline">';
+  CRITERIA.forEach(c=>{
+    chips+='<div class="avgchip">'+c+'<b>'+(avg[c]/rows.length).toFixed(2)+'</b></div>';
+  });
+  chips+='<div class="avgchip">Оценок<b>'+rows.length+'</b></div></div>';
+
+  let html='<div class="tablewrap"><table><thead><tr><th>ФИО</th><th>Образец</th>';
+  CRITERIA.forEach(c=>html+='<th>'+c+'</th>');
+  html+='<th>Средний балл</th><th>Комментарий</th><th>Время</th></tr></thead><tbody>';
+  rows.slice().reverse().forEach(r=>{
+    html+='<tr><td>'+esc(r.name)+'</td><td class="num">'+esc(sLabel(r.sample, r.sampleName||''))+'</td>';
+    CRITERIA.forEach(c=>html+='<td class="num">'+r.scores[c]+'</td>');
+    html+='<td class="num"><b>'+avgOf(r.scores).toFixed(2).replace('.',',')+'</b></td>';
+    html+='<td>'+esc(r.comment||'—')+'</td><td class="num">'+r.time+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  box.innerHTML=chips+html;
+}
+
+function downloadCSV(all){
+  const t=byId(selectedId);
+  const rows = all ? allResults : allResults.filter(r=>t && r.tastingId===t.id);
+  if(!rows.length){ toast('Нет данных для выгрузки'); return; }
+  const LABELS=['№ дегустации','Продукт','ФИО','Образец',...CRITERIA,'Средний балл','Комментарий','Время'];
+  // транспонированный вид: поля — строками, каждая оценка — отдельным столбцом
+  const cols = rows.map(r=>[
+    r.tastingId, r.product, r.name, sLabel(r.sample, r.sampleName||''),
+    ...CRITERIA.map(c=>r.scores[c]),
+    avgOf(r.scores).toFixed(2).replace('.',','),
+    r.comment||'', r.time
+  ]);
+  const out = LABELS.map((lab,i)=>[lab, ...cols.map(c=>c[i])]);
+  const csv='\uFEFF'+out.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const suffix = all ? 'vse' : (t ? t.id : '');
+  a.download='degustaciya_'+suffix+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+/* ---------- дегустатор ---------- */
+let cur=0;
+let answers=[];
+
+function refreshTasterHeader(){
+  const p=document.getElementById('tProduct');
+  const m=document.getElementById('tMeta');
+  const wrap=document.getElementById('tasterPickWrap');
+  const pick=document.getElementById('tasterPick');
+
+  // список дегустаций показываем только при ручном заходе (не по QR)
+  if(viaQR || !tastings.length){
+    wrap.classList.add('hidden');
+  }else{
+    wrap.classList.remove('hidden');
+    pick.innerHTML='';
+    tastings.slice().reverse().forEach(t=>{
+      const o=document.createElement('option');
+      o.value=t.id;
+      o.textContent=t.product+' · '+fmtDate(t.created);
+      if(tasterTasting && t.id===tasterTasting.id)o.selected=true;
+      pick.appendChild(o);
+    });
+  }
+
+  if(tasterTasting){
+    p.textContent='Дегустация: '+tasterTasting.product;
+    m.textContent='№ '+tasterTasting.id+' · образцов: '+tasterTasting.samples;
+  }else{
+    p.textContent='Дегустация не найдена';
+    m.textContent='Обратитесь к организатору или отсканируйте QR-код ещё раз.';
+  }
+}
+
+function pickTasterTasting(id){
+  tasterTasting = byId(id);
+  refreshTasterHeader();
+}
+
+function startTasting(){
+  if(!tasterTasting){ toast('Дегустация не найдена — отсканируйте QR-код'); return; }
+  const name=document.getElementById('tName').value.trim();
+  if(name.length<3){ toast('Пожалуйста, укажите ФИО'); return; }
+  try{ localStorage.setItem('degustation-fio', name); }catch(e){}
+  answers = Array.from({length:tasterTasting.samples},()=>({scores:{},comment:''}));
+  cur=0;
+  document.getElementById('stepName').classList.add('hidden');
+  document.getElementById('stepSample').classList.remove('hidden');
+  renderSample();
+}
+
+function renderSample(){
+  const t=tasterTasting;
+  const bar=document.getElementById('stepsBar'); bar.innerHTML='';
+  for(let i=0;i<t.samples;i++){
+    const s=document.createElement('span');
+    if(i<cur)s.className='done'; else if(i===cur)s.className='cur';
+    bar.appendChild(s);
+  }
+  const nm = sName(t, cur);
+  document.getElementById('sampleTag').textContent =
+    'Образец '+(cur+1)+' из '+t.samples + (nm ? ' · '+nm : '');
+
+  const list=document.getElementById('critList'); list.innerHTML='';
+  CRITERIA.forEach(c=>{
+    const d=document.createElement('div'); d.className='crit';
+    d.innerHTML='<div class="cname">'+c+'</div>';
+    const sc=document.createElement('div'); sc.className='scale';
+    for(let v=1;v<=5;v++){
+      const b=document.createElement('button');
+      b.type='button'; b.textContent=v; b.dataset.v=v;
+      if(answers[cur].scores[c]===v) b.classList.add('sel');
+      b.onclick=()=>{
+        answers[cur].scores[c]=v;
+        [...sc.children].forEach(x=>x.classList.remove('sel'));
+        b.classList.add('sel');
+        updateCommentState();
+      };
+      sc.appendChild(b);
+    }
+    d.appendChild(sc);
+    d.insertAdjacentHTML('beforeend','<div class="scale-labels"><span>плохо</span><span>отлично</span></div>');
+    list.appendChild(d);
+  });
+
+  document.getElementById('tComment').value = answers[cur].comment || '';
+  document.getElementById('btnBack').disabled = (cur===0);
+  document.getElementById('btnNext').textContent = (cur===t.samples-1)?'Отправить оценки ✓':'Далее →';
+  updateCommentState();
+  window.scrollTo({top:0});
+}
+
+function lowScore(){
+  const t=tasterTasting;
+  const s=answers[cur].scores;
+  return t.threshold>0 && CRITERIA.some(c=>s[c]!==undefined && s[c]<=t.threshold);
+}
+function updateCommentState(){
+  const box=document.getElementById('commentBox');
+  const hint=document.getElementById('commentHint');
+  if(lowScore()){
+    box.classList.add('required');
+    hint.textContent='Есть оценка '+tasterTasting.threshold+' или ниже — опишите, пожалуйста, причину.';
+  }else{
+    box.classList.remove('required');
+    hint.textContent='Необязательно, но нам важно ваше мнение.';
+  }
+}
+
+function prevSample(){
+  answers[cur].comment=document.getElementById('tComment').value.trim();
+  if(cur>0){cur--;renderSample();}
+}
+
+let submitting = false; // защита от повторных нажатий при отправке
+
+async function nextSample(){
+  if(submitting) return;
+  const t=tasterTasting;
+  answers[cur].comment=document.getElementById('tComment').value.trim();
+  const missing=CRITERIA.filter(c=>answers[cur].scores[c]===undefined);
+  if(missing.length){ toast('Оцените: '+missing.join(', ')); return; }
+  if(lowScore() && !answers[cur].comment){
+    toast('При низкой оценке комментарий обязателен'); return;
+  }
+  if(cur<t.samples-1){ cur++; renderSample(); return; }
+
+  // ---- финальная отправка ----
+  submitting = true;
+  const btnNext=document.getElementById('btnNext');
+  const btnBack=document.getElementById('btnBack');
+  btnNext.disabled=true; btnBack.disabled=true;
+  btnNext.innerHTML='<span class="spin"></span>&nbsp;Отправляем…';
+
+  const name=document.getElementById('tName').value.trim();
+  const time=fmtDate(Date.now());
+  // уникальный ID отправки: даже если дубль проскочит, его можно отсеять
+  const subId='S'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const rows = answers.map((a,i)=>({
+    subId, tastingId:t.id, product:t.product,
+    name, time, sample:i+1, sampleName:sName(t,i),
+    scores:a.scores, avg:+avgOf(a.scores).toFixed(2), comment:a.comment
+  }));
+
+  let sent = false;
+  try{
+    // 1) webhook (если задан в QR-коде) — для размещения без общей базы
+    const ep = t.endpoint || '';
+    if(ep){
+      try{
+        await fetch(ep, { method:'POST', mode:'no-cors',
+          headers:{'Content-Type':'text/plain'}, body: JSON.stringify(rows) });
+        sent = true;
+      }catch(e){ console.error('webhook error', e); }
+    }
+    // 2) хранилище (общее в артефакте / локальное на этом устройстве)
+    allResults = await loadKey(R_KEY, allResults);
+    if(!allResults.some(r=>r.subId===subId)){ // дедупликация
+      rows.forEach(r=>allResults.push(r));
+      await saveKey(R_KEY, allResults);
+    }
+  }catch(e){
+    console.error('submit error', e);
+    toast('Не удалось отправить — проверьте связь и нажмите ещё раз');
+    btnNext.disabled=false; btnBack.disabled=false;
+    btnNext.textContent='Отправить оценки ✓';
+    submitting=false;
+    return;
+  }
+
+  const doneHint=document.getElementById('doneHint');
+  if(sent || hasStorage){
+    doneHint.textContent='Результаты уже доступны организатору дегустации.';
+  }else{
+    doneHint.textContent='Результаты сохранены на этом устройстве. Организатору: для сбора оценок с телефонов укажите webhook в настройках.';
+  }
+  submitting=false;
+  btnNext.disabled=false; btnBack.disabled=false;
+  btnNext.textContent='Отправить оценки ✓';
+  document.getElementById('stepSample').classList.add('hidden');
+  document.getElementById('stepDone').classList.remove('hidden');
+}
+
+function resetTaster(){
+  document.getElementById('tName').value='';
+  document.getElementById('stepDone').classList.add('hidden');
+  document.getElementById('stepName').classList.remove('hidden');
+}
+
+/* ---------- обновление данных ---------- */
+setInterval(async ()=>{
+  if(document.getElementById('viewAdmin').classList.contains('hidden')) return;
+  const freshT=await loadKey(T_KEY, null);
+  const freshR=await loadKey(R_KEY, null);
+  let changed=false;
+  if(freshT && JSON.stringify(freshT)!==JSON.stringify(tastings)){ tastings=freshT; changed=true; }
+  if(freshR && freshR.length!==allResults.length){ allResults=freshR; changed=true; }
+  if(changed) renderAdmin();
+}, 5000);
+
+/* ---------- запуск ---------- */
+(async function init(){
+  tastings = await loadKey(T_KEY, []);
+  allResults = await loadKey(R_KEY, []);
+  if(tastings.length) selectedId = tastings[tastings.length-1].id;
+  try{ endpoint = localStorage.getItem('degustation-endpoint') || ''; }catch(e){}
+  if(!endpoint) endpoint = DEFAULT_ENDPOINT;   // адрес, вшитый в файл
+  renderEndpointHint();
+  document.getElementById('cfgEndpoint').value = endpoint;
+  try{ document.getElementById('cfgSheetUrl').value = localStorage.getItem('degustation-sheet-url') || ''; }catch(e){}
+  renderNameInputs(); // поля названий образцов под текущее количество
+  try{ // запомненное ФИО дегустатора на этом устройстве
+    const fio = localStorage.getItem('degustation-fio') || '';
+    if(fio) document.getElementById('tName').value = fio;
+  }catch(e){}
+
+  const md = location.hash.match(/^#d=(.+)$/);   // конфигурация зашита в ссылку
+  const mt = location.hash.match(/^#t=(.+)$/);   // старый формат: только id
+  if(md || mt || location.hash==='#taster'){
+    if(md) tasterTasting = decCfg(md[1]);
+    else if(mt) tasterTasting = byId(mt[1]);
+    else tasterTasting = tastings[tastings.length-1] || null;
+    viaQR = true;
+    document.getElementById('roleTabs').classList.add('hidden'); // по QR — только опрос
+    setRole('taster');
+  }else{
+    renderAdmin();
+  }
+})();
+</script>
+</body>
+</html>
